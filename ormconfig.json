@@ -1,0 +1,24 @@
+{
+   "type": "postgres",
+   "host": "localhost",
+   "port": 5432,
+   "username": "igor",
+   "password": "Fuvive25",
+   "database": "recorder",
+   "synchronize": true,
+   "logging": false,
+   "entities": [
+      "build/socialmedia/domain/entities/**/*.js"
+   ],
+   "migrations": [
+      "build/migration/**/*.js"
+   ],
+   "subscribers": [
+      "build/src/subscriber/**/*.js"
+   ],
+   "cli": {
+      "entitiesDir": "src/socialmedia/domain/entities",
+      "migrationsDir": "src/migration",
+      "subscribersDir": "src/subscriber"
+   }
+}
