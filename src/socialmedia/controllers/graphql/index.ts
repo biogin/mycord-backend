@@ -7,7 +7,7 @@ export const typeDefs = gql`
     }
     
     type User {
-        id: ID!
+        id: ID
         
         profile: Profile!
         posts: [Post]
@@ -17,13 +17,13 @@ export const typeDefs = gql`
     }
 
     type Post {
-        id: ID!
+        id: ID
         
-        title: String!
+        title: String
         description: String
         audioUrl: String!
         
-        user: User!
+        user: User
         
         likes: [Like]
         comments: [Comment]
@@ -39,17 +39,17 @@ export const typeDefs = gql`
     }
     
     type Like {
-        id: ID!
+        id: ID
         
-        likedEntityType: LikedEntityType!
+        likedEntityType: LikedEntityType
         post: Post
         comment: Comment
         
-        user: User!
+        user: User
     }
 
     type Profile {
-        id: ID!
+        id: ID
         
         email: String!
         password: String!
@@ -69,6 +69,10 @@ export const typeDefs = gql`
         signup(name: String, password: String, email: String, imageUrl: String): User!
         login(email: String, password: String): Profile!
         
-        createPost(description: String, title: String, audioUrl: String, userId: ID): Post!
+        createPost(description: String, title: String, audioUrl: String, userId: ID!): Post!
+        
+        likeEntity(entityId: ID!, likedEntityType: LikedEntityType!, userId: ID!): Like
+        
+        leaveComment(postId: ID!, userId: ID!, commentText: String!): Comment!
     }
 `;

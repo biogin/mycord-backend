@@ -26,11 +26,12 @@ export class Post {
   @OneToMany(type => Comment, comment => comment.post)
   comments: Array<Comment>;
 
-  static create({ audioUrl, description, title }: Partial<{ [T in keyof Post] }>): Post {
+  static create({ audioUrl, description, title, user }: Partial<{ [T in keyof Post] }>): Post {
     const post = new Post();
 
     post.audioUrl =  audioUrl;
     post.title =  title;
+    post.user = user;
     post.description =  description;
 
     return post;

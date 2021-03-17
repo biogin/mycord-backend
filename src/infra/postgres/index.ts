@@ -18,7 +18,7 @@ type Entity = User | Post | Comment | Like | Profile;
 
 const entities = [User, Comment, Like, Profile, Post];
 
-export async function getRepositories(connection: Connection): Promise<{ [key: string]: Repository<any> }> {
+export function getRepositories(connection: Connection): { [key: string]: Repository<any> } {
   const [userRepo, commentRepo, likeRepo, profileRepo, postRepo] = entities.map(entity => connection.getRepository(entity));
 
   return {

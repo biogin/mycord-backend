@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import redis from 'redis';
 import expressSession from 'express-session';
+import { getManager } from 'typeorm';
 
 require('dotenv').config({
   path: __dirname + '/env'
@@ -16,6 +17,7 @@ import { getOrCreateConnection, getRepositories } from "./infra/postgres";
 import { getResolvers } from "./socialmedia/controllers/graphql/resolvers";
 import { typeDefs } from "./socialmedia/controllers/graphql";
 import { AuthService } from "./socialmedia/application/services/auth";
+import { getApplicationUseCases } from "./socialmedia/application/usecases";
 
 const corsOptions = {
   // origin: corsConfig.corsWhitelist.split(','),
@@ -29,11 +31,13 @@ const corsOptions = {
 
     const connection = await getOrCreateConnection();
 
-    const { userRepo, postRepo, profileRepo } = await getRepositories(connection);
+    const { userRepo, postRepo, profileRepo, commentRepo, likeRepo } = getRepositories(connection);
+
+    const useCases = getApplicationUseCases({ userRepo, likeRepo, postRepo, commentRepo, profileRepo, getTransactionManager: getManager });
 
     const authService = new AuthService({ userRepo, profileRepo });
 
-    const resolvers = getResolvers({ userRepo, authService, postRepo, profileRepo });
+    const resolvers = getResolvers({ userRepo, authService, postRepo, profileRepo, commentRepo, useCases });
 
     app.use(expressSession({
       store: new RedisStore({ client: redisClient }),

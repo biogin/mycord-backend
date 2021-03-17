@@ -8,30 +8,32 @@ import { AuthService } from "../../../application/services/auth";
 import { User } from "../../../domain/entities/User";
 import { Profile } from "../../../domain/entities/Profile";
 import { Post } from "../../../domain/entities/Post";
+import { CommentRepository } from "../../../application/repositories/commentRepo";
+import { NOT_AUTHENTICATED, USER_NOT_FOUND } from "../errors";
+import { UseCase } from "../../../application/usecases";
 
 interface Args {
   userRepo: UserRepository;
   postRepo: PostRepository;
+  commentRepo: CommentRepository;
   profileRepo: PostRepository;
   authService: AuthService;
+
+  useCases: { [name: string]: UseCase<unknown, unknown> };
 }
 
-export function getResolvers({ userRepo, authService, postRepo, profileRepo }: Args) {
+export function getResolvers({ userRepo, authService, postRepo, profileRepo, commentRepo, useCases }: Args) {
   return {
     Query: {
       user: async (_, { email }) => {
-        const user = await userRepo.findOne({ where: { profile: { email } } } as FindConditions<User>, { relations: ['posts'] });
-
-        console.log('requested user ', user);
-
-        return user;
+        return userRepo.findOne({ where: { profile: { email } } } as FindConditions<User>, { relations: ['posts'] });
       },
       post: async (_, { id }) => {
         return postRepo.findOne(id);
       },
       async posts(_, { userId }, { req }) {
         if (!req.session.isLoggedIn) {
-          throw new AuthenticationError('access_denied');
+          throw new AuthenticationError(NOT_AUTHENTICATED);
         }
 
         return postRepo.find({ relations: ['user'], where: { user: { id: userId } } });
@@ -70,24 +72,48 @@ export function getResolvers({ userRepo, authService, postRepo, profileRepo }: A
 
         return profile;
       },
-
       async createPost(_, { title, description, audioUrl, userId }, { req }) {
         if (!req.session.isLoggedIn) {
-          throw new AuthenticationError('access_denied');
+          throw new AuthenticationError(NOT_AUTHENTICATED);
         }
 
         const user = await userRepo.findOne(userId, { relations: ['posts'] });
-        console.log(user);
 
         if (!user) {
-          throw new UserInputError('invalid_userid');
+          throw new UserInputError(USER_NOT_FOUND);
         }
 
-        const post = Post.create({ title, description, audioUrl });
+        const post = Post.create({ title, description, audioUrl, user });
 
         await postRepo.save(post);
 
         return post;
+      },
+      async likeEntity(_, { entityId, userId, likedEntityType }, { req }) {
+        if (!req.session.isLoggedIn) {
+          throw new AuthenticationError(NOT_AUTHENTICATED);
+        }
+
+        try {
+          return await useCases.likeEntityUseCase.execute({ entityId, userId, likedEntityType });
+        } catch (e) {
+          console.error(e);
+
+          throw e;
+        }
+      },
+      async leaveComment(_, { postId, userId, comment }, { req }) {
+        if (!req.session.isLoggedIn) {
+          throw new AuthenticationError(NOT_AUTHENTICATED);
+        }
+
+        try {
+          return await useCases.leaveCommentUseCase.execute({ postId, userId, comment });
+        } catch (e) {
+          console.error(e);
+
+          throw e;
+        }
       }
     }
   };

@@ -11,7 +11,7 @@ export class Comment {
   @Column('varchar', {length: 1000, default: ''})
   text;
 
-  @OneToOne(() => User)
+  @ManyToOne(() => User)
   user: User;
 
   @ManyToOne(() => Post)
@@ -19,4 +19,14 @@ export class Comment {
 
   @OneToMany(() => Like, like => like.comment)
   likes: Array<Like>;
+
+  static create({ text, post, user }: Partial< { [T in keyof Comment] } >): Comment {
+    const comment = new Comment();
+
+    comment.user = user;
+    comment.post = post;
+    comment.text = text;
+
+    return comment;
+  }
 }

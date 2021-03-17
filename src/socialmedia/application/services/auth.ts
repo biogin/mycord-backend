@@ -61,6 +61,6 @@ export class AuthService {
 
     const newUser = User.create({ profile });
 
-    return this.userRepo.save(newUser);
+    return await this.userRepo.save(newUser);
   }
 }

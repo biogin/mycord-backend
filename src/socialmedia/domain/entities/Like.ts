@@ -18,13 +18,24 @@ export class Like {
     enum: LikedEntityType
   }) likedEntityType: LikedEntityType;
 
-  @ManyToOne(type => Post, post => post.likes)
+  @ManyToOne(type => Post, post => post.likes, { nullable: true })
   post: Post;
 
-  @ManyToOne(type => Comment, comment => comment.likes)
+  @ManyToOne(type => Comment, comment => comment.likes, { nullable: true })
   comment: Comment;
 
   @OneToOne(type => User)
   @JoinColumn()
   user: User;
+
+  static create({ user, post, comment, likedEntityType }: Partial<{ [T in keyof Like] }>): Like {
+    const like = new Like();
+
+    like.user = user;
+    like.comment = comment;
+    like.post = post;
+    like.likedEntityType = likedEntityType;
+
+    return like;
+  }
 }
