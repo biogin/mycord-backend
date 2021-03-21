@@ -8,7 +8,7 @@ import { ProfileRepository } from "../repositories/profileRepo";
 import { Profile } from "../../domain/entities/Profile";
 
 const invalidCredentialsError = () => {
-  throw new UserInputError('Invalid credentials');
+  throw new UserInputError('invalid_credentials');
 }
 
 interface Args {
@@ -23,8 +23,9 @@ interface LoginInput {
 }
 
 interface SignupInput extends LoginInput {
-  name?: string;
-  imageUrl: string;
+  birthday: string;
+  name: string;
+  imageUrl?: string;
   bio?: string;
 }
 
@@ -51,11 +52,11 @@ export class AuthService {
     return profile;
   }
 
-  async signup({ email, password, name, imageUrl }: SignupInput): Promise<User> {
+  async signup({ email, password, name, imageUrl, birthday }: SignupInput): Promise<User> {
     if (await this.profileRepo.findOne({ where: { email } })) {
-      throw new UserInputError('User with such email already exists.');
+      throw new UserInputError('user_already_exist');
     }
-    const profile = Profile.create({ email, password, name, imageUrl });
+    const profile = Profile.create({ email, password, name, imageUrl, birthday });
 
     await this.profileRepo.save(profile);
 

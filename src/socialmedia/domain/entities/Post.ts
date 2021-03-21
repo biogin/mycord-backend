@@ -1,4 +1,5 @@
-import {Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn} from "typeorm";
+import { BeforeInsert, Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+
 import {User} from "./User";
 import {Like} from "./Like";
 import {Comment} from "./Comment";
@@ -17,6 +18,9 @@ export class Post {
   @Column('text', { default: ''  })
   audioUrl: string;
 
+  @Column('date')
+  createdAt: Date;
+
   @ManyToOne(type => User, user => user.posts)
   user: User;
 
@@ -25,6 +29,11 @@ export class Post {
 
   @OneToMany(type => Comment, comment => comment.post)
   comments: Array<Comment>;
+
+  @BeforeInsert()
+  updateDates() {
+    this.createdAt = new Date();
+  }
 
   static create({ audioUrl, description, title, user }: Partial<{ [T in keyof Post] }>): Post {
     const post = new Post();

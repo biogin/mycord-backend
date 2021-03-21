@@ -25,7 +25,11 @@ interface Args {
 export function getResolvers({ userRepo, authService, postRepo, profileRepo, commentRepo, useCases }: Args) {
   return {
     Query: {
-      user: async (_, { email }) => {
+      user: async (_, { email }, { req }) => {
+        if (!req.session.isLoggedIn) {
+          throw new AuthenticationError(NOT_AUTHENTICATED);
+        }
+
         return userRepo.findOne({ where: { profile: { email } } } as FindConditions<User>, { relations: ['posts'] });
       },
       post: async (_, { id }) => {
@@ -37,33 +41,30 @@ export function getResolvers({ userRepo, authService, postRepo, profileRepo, com
         }
 
         return postRepo.find({ relations: ['user'], where: { user: { id: userId } } });
+      },
+      loggedIn(_, _data, { req }): boolean {
+        return req.session.isLoggedIn;
       }
     },
     Mutation: {
-      signup: async (_, { name, password, bio, email, imageUrl }, { req, res }) => {
-        return authService.signup({ name, password, email, imageUrl });
+      signup: async (_, { name, password,  email, imageUrl, birthday }, { req, res }) => {
+        if (req.session.isLoggedIn) {
+          res.setHeader('Location', '/app');
+          return res.end();
+        }
+
+        req.session.isLoggedIn = true;
+        req.session.username = name;
+        req.session.email = email;
+
+        return authService.signup({ name, password, email, imageUrl, birthday });
       },
-      createUser: async (_, { name, password }, context) => {
-        const p = new Profile();
+      login: async (_, { email, password }, { req, res }) => {
+        if (req.session.isLoggedIn) {
+          res.setHeader('Location', '/app');
+          return res.end();
+        }
 
-        p.email = 'igor@ramler.ru' + Math.random();
-        p.imageUrl = 'image.png';
-        p.name = name;
-        p.password = password;
-
-        await profileRepo.save(p);
-
-        const u = new User();
-
-        u.profile = p;
-        u.comments = [];
-        u.posts = [];
-
-        await userRepo.save(u);
-
-        return u;
-      },
-      login: async (_, { email, password }, { req }) => {
         const profile = await authService.login({ email, password });
 
         req.session.isLoggedIn = true;

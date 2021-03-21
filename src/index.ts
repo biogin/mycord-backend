@@ -2,6 +2,7 @@ import "reflect-metadata";
 import redis from 'redis';
 import expressSession from 'express-session';
 import { getManager } from 'typeorm';
+import cors from 'cors';
 
 require('dotenv').config({
   path: __dirname + '/env'
@@ -30,6 +31,8 @@ const corsOptions = {
     const app = express();
 
     const connection = await getOrCreateConnection();
+
+    // await connection.runMigrations();
 
     const { userRepo, postRepo, profileRepo, commentRepo, likeRepo } = getRepositories(connection);
 
@@ -64,7 +67,7 @@ const corsOptions = {
 
     server.applyMiddleware({
       app,
-      cors: false
+      cors: corsOptions
     });
 
     app.listen({ port: 4000 }, () => {

@@ -1,14 +1,16 @@
-import { Entity, OneToMany, OneToOne, PrimaryGeneratedColumn, JoinColumn } from "typeorm";
+import { Entity, OneToMany, OneToOne, PrimaryGeneratedColumn, JoinColumn, Column } from "typeorm";
 
 import { Post } from "./Post";
 import { Profile } from "./Profile";
 import { Comment } from "./Comment";
-import { ProfileRepository } from "../../application/repositories/profileRepo";
 
 @Entity()
 export class User {
   @PrimaryGeneratedColumn()
   id: number;
+
+  @Column('boolean')
+  isLoggedIn: boolean;
 
   @OneToOne(() => Profile, profile => profile.user)
   @JoinColumn()

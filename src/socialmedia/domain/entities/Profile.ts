@@ -15,7 +15,7 @@ export class Profile {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({length: 256})
+  @Column({ length: 256 })
   name: string;
 
   @BeforeInsert()
@@ -26,6 +26,9 @@ export class Profile {
   @Column('text')
   password: string;
 
+  @Column({ type: 'date' })
+  birthday: string;
+
   @Column('text')
   imageUrl: string;
 
@@ -35,13 +38,14 @@ export class Profile {
   @OneToOne(type => User, user => user.profile)
   user: User;
 
-  static create({ password, email, name, imageUrl }: Partial<{ [T in keyof Profile] }>): Profile {
+  static create({ password, email, name, imageUrl, birthday }: Partial<{ [T in keyof Profile] }>): Profile {
     const profile = new Profile();
 
     profile.password = password;
     profile.email = email;
     profile.name = name;
     profile.imageUrl = imageUrl;
+    profile.birthday = birthday;
 
     return profile;
   }

@@ -21,16 +21,15 @@ export const typeDefs = gql`
         
         title: String
         description: String
-        audioUrl: String!
-        
+        audioUrl: String
+        createdAt: String
         user: User
-        
         likes: [Like]
         comments: [Comment]
     }
     
     type Comment {
-        id: ID!
+        id: ID
         
         text: String!
         user: User!
@@ -53,6 +52,7 @@ export const typeDefs = gql`
         
         email: String!
         password: String!
+        birthday: String!
         name: String
         imageUrl: String
         user: User
@@ -61,12 +61,12 @@ export const typeDefs = gql`
     type Query {
         user(id: ID): User!,
         post(id: ID): Post!,
-        posts(userId: String): [Post!]
+        posts(userId: ID): [Post!]
+        loggedIn: Boolean
     }
     
     type Mutation {
-        createUser(name: String, password: String): User!
-        signup(name: String, password: String, email: String, imageUrl: String): User!
+        signup(name: String, password: String, email: String, birthday: String): User!
         login(email: String, password: String): Profile!
         
         createPost(description: String, title: String, audioUrl: String, userId: ID!): Post!
