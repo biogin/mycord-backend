@@ -1,11 +1,14 @@
 import { UserInputError } from "apollo-server-express";
+import { EntityManager } from "typeorm";
 import * as argon2 from 'argon2';
 
-import { User } from "../../domain/entities/User";
 import validateEmail from "../../../utils/validateEmail";
+
+import { User } from "../../domain/entities/User";
+import { Profile } from "../../domain/entities/Profile";
+
 import { UserRepository } from "../repositories/userRepo";
 import { ProfileRepository } from "../repositories/profileRepo";
-import { Profile } from "../../domain/entities/Profile";
 
 const invalidCredentialsError = () => {
   throw new UserInputError('invalid_credentials');

@@ -8,10 +8,10 @@ module.exports = {
     "synchronize": false,
     "logging": false,
     "entities": [
-        "build/socialmedia/domain/entities/**/*.js"
+        "build/socialmedia/domain/entities/**.js"
     ],
     "migrations": [
-        "build/migration/**/*.js"
+        "build/migration/**.js"
     ],
     "subscribers": [
         "build/src/subscriber/**/*.js"

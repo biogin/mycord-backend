@@ -40,7 +40,7 @@ const corsOptions = {
 
     const authService = new AuthService({ userRepo, profileRepo });
 
-    const resolvers = getResolvers({ userRepo, authService, postRepo, profileRepo, commentRepo, useCases });
+    const resolvers = getResolvers({ userRepo, authService, postRepo, profileRepo, commentRepo, useCases, getManager });
 
     app.use(expressSession({
       store: new RedisStore({ client: redisClient }),

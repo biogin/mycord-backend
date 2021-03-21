@@ -9,9 +9,6 @@ export class User {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column('boolean')
-  isLoggedIn: boolean;
-
   @OneToOne(() => Profile, profile => profile.user)
   @JoinColumn()
   profile: Profile;

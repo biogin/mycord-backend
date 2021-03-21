@@ -5,7 +5,6 @@ import {
   OneToOne,
   PrimaryGeneratedColumn
 } from "typeorm";
-
 import * as argon2 from "argon2";
 
 import {User} from "./User";
@@ -26,10 +25,10 @@ export class Profile {
   @Column('text')
   password: string;
 
-  @Column({ type: 'date' })
+  @Column({ type: 'timestamp with time zone' })
   birthday: string;
 
-  @Column('text')
+  @Column('text', { nullable: true })
   imageUrl: string;
 
   @Column('varchar', { length: 256, unique: true })

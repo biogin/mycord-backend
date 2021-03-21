@@ -1,16 +1,17 @@
-import { FindConditions } from "typeorm";
+import { EntityManager, FindConditions } from "typeorm";
 
 import { AuthenticationError, UserInputError } from 'apollo-server-express';
 
 import { UserRepository } from "../../../application/repositories/userRepo";
 import { PostRepository } from "../../../application/repositories/postRepo";
 import { AuthService } from "../../../application/services/auth";
-import { User } from "../../../domain/entities/User";
-import { Profile } from "../../../domain/entities/Profile";
-import { Post } from "../../../domain/entities/Post";
 import { CommentRepository } from "../../../application/repositories/commentRepo";
-import { NOT_AUTHENTICATED, USER_NOT_FOUND } from "../errors";
 import { UseCase } from "../../../application/usecases";
+
+import { User } from "../../../domain/entities/User";
+import { Post } from "../../../domain/entities/Post";
+
+import { NOT_AUTHENTICATED, USER_NOT_FOUND } from "../errors";
 
 interface Args {
   userRepo: UserRepository;
@@ -19,10 +20,20 @@ interface Args {
   profileRepo: PostRepository;
   authService: AuthService;
 
+  getManager(): EntityManager;
+
   useCases: { [name: string]: UseCase<unknown, unknown> };
 }
 
-export function getResolvers({ userRepo, authService, postRepo, profileRepo, commentRepo, useCases }: Args) {
+export function getResolvers({
+                               userRepo,
+                               authService,
+                               postRepo,
+                               profileRepo,
+                               commentRepo,
+                               useCases,
+                               getManager
+                             }: Args) {
   return {
     Query: {
       user: async (_, { email }, { req }) => {
@@ -43,11 +54,11 @@ export function getResolvers({ userRepo, authService, postRepo, profileRepo, com
         return postRepo.find({ relations: ['user'], where: { user: { id: userId } } });
       },
       loggedIn(_, _data, { req }): boolean {
-        return req.session.isLoggedIn;
+        return !!req.session.isLoggedIn;
       }
     },
     Mutation: {
-      signup: async (_, { name, password,  email, imageUrl, birthday }, { req, res }) => {
+      signup: async (_, { name, password, email, imageUrl, birthday }, { req, res }) => {
         if (req.session.isLoggedIn) {
           res.setHeader('Location', '/app');
           return res.end();
