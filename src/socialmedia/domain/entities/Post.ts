@@ -24,10 +24,10 @@ export class Post {
   @ManyToOne(type => User, user => user.posts)
   user: User;
 
-  @OneToMany(type => Like, like => like.post)
+  @OneToMany(type => Like, like => like.post, { onDelete: 'CASCADE' })
   likes: Array<Like>;
 
-  @OneToMany(type => Comment, comment => comment.post)
+  @OneToMany(type => Comment, comment => comment.post, { onDelete: 'CASCADE' })
   comments: Array<Comment>;
 
   @BeforeInsert()

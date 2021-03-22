@@ -25,7 +25,7 @@ export class Profile {
   @Column('text')
   password: string;
 
-  @Column({ type: 'timestamp with time zone' })
+  @Column('timestamp with time zone')
   birthday: string;
 
   @Column('text', { nullable: true })

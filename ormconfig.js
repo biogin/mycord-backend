@@ -5,10 +5,10 @@ module.exports = {
     "username": process.env.DB_USER,
     "password": process.env.DB_PASS,
     "database": process.env.DB_NAME,
-    "synchronize": false,
+    "synchronize": true,
     "logging": false,
     "entities": [
-        "build/socialmedia/domain/entities/**.js"
+        "build/socialmedia/domain/entities/**/*.js"
     ],
     "migrations": [
         "build/migration/**.js"
@@ -17,8 +17,8 @@ module.exports = {
         "build/src/subscriber/**/*.js"
     ],
     "cli": {
-        "entitiesDir": "src/socialmedia/domain/entities",
-        "migrationsDir": "src/migration",
-        "subscribersDir": "src/subscriber"
+        "entitiesDir": "build/socialmedia/domain/entities",
+        "migrationsDir": "build/migration",
+        "subscribersDir": "build/subscriber"
     }
 }

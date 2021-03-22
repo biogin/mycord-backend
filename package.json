@@ -25,8 +25,8 @@
       "typeorm": "0.2.31"
    },
    "scripts": {
-      "start": "rm -fr build && npm run build && nodemon ./build/index.js",
       "build": "tsc",
-      "build:prod": "NODE_ENV=production tsc"
+      "build:prod": "NODE_ENV=production tsc",
+      "start:dev": "rm -fr build && tsc && cp src/env/.env ./build/.env && nodemon ./build/index.js"
    }
 }

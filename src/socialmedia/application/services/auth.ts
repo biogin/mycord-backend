@@ -1,5 +1,4 @@
 import { UserInputError } from "apollo-server-express";
-import { EntityManager } from "typeorm";
 import * as argon2 from 'argon2';
 
 import validateEmail from "../../../utils/validateEmail";
@@ -55,9 +54,9 @@ export class AuthService {
     return profile;
   }
 
-  async signup({ email, password, name, imageUrl, birthday }: SignupInput): Promise<User> {
+  async signup({ email, password, name, imageUrl, birthday }: SignupInput): Promise<Profile> {
     if (await this.profileRepo.findOne({ where: { email } })) {
-      throw new UserInputError('user_already_exist');
+      throw new UserInputError('duplicate_email');
     }
     const profile = Profile.create({ email, password, name, imageUrl, birthday });
 
@@ -65,6 +64,8 @@ export class AuthService {
 
     const newUser = User.create({ profile });
 
-    return await this.userRepo.save(newUser);
+    await this.userRepo.save(newUser);
+
+    return profile;
   }
 }

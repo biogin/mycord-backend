@@ -84,6 +84,16 @@ export function getResolvers({
 
         return profile;
       },
+      signout(_, _data, { session }) {
+        if (session.isLoggedIn) {
+          const email = session.email;
+          session.destroy();
+
+          session = null;
+
+          return profileRepo.findOne({ where: { email } });
+        }
+      },
       async createPost(_, { title, description, audioUrl, userId }, { req }) {
         if (!req.session.isLoggedIn) {
           throw new AuthenticationError(NOT_AUTHENTICATED);
