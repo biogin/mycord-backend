@@ -1,7 +1,9 @@
-# Awesome Project Build with TypeORM
+# mycord-backend
 
-Steps to run this project:
+Add src/env/.env file with local variables
 
-1. Run `npm i` command
-2. Setup database settings inside `ormconfig.json` file
-3. Run `npm start` command
+ 
+### `start:dev`
+- backend api [http://localhost:4000/graphql]()
+
+- frontend [http://localhost:3000]()
