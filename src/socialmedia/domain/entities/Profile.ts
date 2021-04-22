@@ -7,15 +7,21 @@ import {
 } from "typeorm";
 import * as argon2 from "argon2";
 
-import {User} from "./User";
+import { User } from "./User";
 
 @Entity()
 export class Profile {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ length: 256 })
-  name: string;
+  @Column('varchar', { length: 256, nullable: true })
+  firstName: string;
+
+  @Column('varchar', { length: 256, nullable: true })
+  lastName: string;
+
+  @Column('varchar', { length: 256, default: '' })
+  username: string;
 
   @BeforeInsert()
   async hash() {
@@ -34,15 +40,15 @@ export class Profile {
   @Column('varchar', { length: 256, unique: true })
   email: string;
 
-  @OneToOne(type => User, user => user.profile)
+  @OneToOne(type => User, user => user.profile, { onDelete: 'CASCADE' })
   user: User;
 
-  static create({ password, email, name, imageUrl, birthday }: Partial<{ [T in keyof Profile] }>): Profile {
+  static create({ password, email, username, imageUrl, birthday }: Partial<{ [T in keyof Profile] }>): Profile {
     const profile = new Profile();
 
     profile.password = password;
     profile.email = email;
-    profile.name = name;
+    profile.username = username;
     profile.imageUrl = imageUrl;
     profile.birthday = birthday;
 

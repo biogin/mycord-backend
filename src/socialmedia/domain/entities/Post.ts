@@ -18,7 +18,7 @@ export class Post {
   @Column('text', { default: ''  })
   audioUrl: string;
 
-  @Column('date')
+  @Column('timestamp with time zone')
   createdAt: Date;
 
   @ManyToOne(type => User, user => user.posts)

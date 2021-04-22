@@ -6,7 +6,7 @@ import { UserRepository } from "../repositories/userRepo";
 import { PostRepository } from "../repositories/postRepo";
 import { CommentRepository } from "../repositories/commentRepo";
 import { Like, LikedEntityType } from "../../domain/entities/Like";
-import { COMMENT_NOT_FOUND, POST_NOT_FOUND, USER_NOT_FOUND } from "../../controllers/graphql/errors";
+import { COMMENT_NOT_FOUND, POST_NOT_FOUND, USER_NOT_FOUND } from "../../controllers/graphql/constants/errors";
 import { LikeRepository } from "../repositories/likeRepo";
 
 interface Deps {

@@ -4,6 +4,7 @@ import redis from 'redis';
 import expressSession from 'express-session';
 
 const RedisStore = require('connect-redis')(expressSession);
+// const helmet = require('helmet');
 
 const redisClient = redis.createClient()
 
@@ -19,30 +20,66 @@ interface Args {
 export class App {
   private db: Database;
 
-  resolvers: object;
-  expressApp: Express;
+  readonly resolvers: object;
+  readonly session: any;
+  readonly expressApp: Express;
 
   constructor({ database }: Args) {
     this.expressApp = express();
     this.db = database;
 
-    const { userRepo, postRepo, profileRepo, commentRepo, likeRepo } = this.db.repos;
+    const {
+      userRepo,
+      postRepo,
+      profileRepo,
+      commentRepo,
+      likeRepo,
+      followerRepo,
+      messageRepo,
+      conversationRepo,
+    } = this.db.repos;
 
-    const useCases = getApplicationUseCases({ userRepo, likeRepo, postRepo, commentRepo, profileRepo, getTransactionManager: getManager });
+    const useCases = getApplicationUseCases({
+      userRepo,
+      likeRepo,
+      postRepo,
+      commentRepo,
+      profileRepo,
+      messageRepo,
+      conversationRepo,
+      followerRepo,
+      getTransactionManager: getManager
+    });
 
     const authService = new AuthService({ userRepo, profileRepo });
 
-    this.resolvers = getResolvers({ userRepo, authService, postRepo, profileRepo, commentRepo, useCases, getManager });
+    this.resolvers = getResolvers({
+      userRepo,
+      authService,
+      postRepo,
+      followerRepo,
+      profileRepo,
+      commentRepo,
+      useCases,
+      conversationRepo,
+      messageRepo,
+      getManager
+    });
 
-    this.expressApp.use(expressSession({
+    this.session = expressSession({
       store: new RedisStore({ client: redisClient }),
       secret: process.env.SESSION_SECRET || 'cat',
       resave: false,
+      saveUninitialized: false,
       cookie: {
         secure: process.env.NODE_ENV === 'production',
-        httpOnly: false
+        httpOnly: process.env.NODE_ENV === 'production',
+        maxAge: 30 * 24 * 60 * 60 * 1000 // 30 days
       },
-      saveUninitialized: false,
-    }));
+    });
+
+    this.expressApp.use(this.session);
+
+    // this.expressApp.use(helmet());
   }
 }

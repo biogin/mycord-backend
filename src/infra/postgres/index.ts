@@ -5,6 +5,9 @@ import { User } from "../../socialmedia/domain/entities/User";
 import { Comment } from "../../socialmedia/domain/entities/Comment";
 import { Like } from "../../socialmedia/domain/entities/Like";
 import { Profile } from "../../socialmedia/domain/entities/Profile";
+import { Follower } from "../../socialmedia/domain/entities/Follower";
+import { Message } from "../../socialmedia/domain/entities/Message";
+import { Conversation } from "../../socialmedia/domain/entities/Conversation";
 
 async function getOrCreateConnection() {
   try {
@@ -16,17 +19,20 @@ async function getOrCreateConnection() {
 
 type Entity = User | Post | Comment | Like | Profile;
 
-const entities = [User, Comment, Like, Profile, Post];
+const entities = [User, Comment, Like, Profile, Post, Follower, Message, Conversation];
 
 function getRepositories(connection: Connection): { [key: string]: Repository<any> } {
-  const [userRepo, commentRepo, likeRepo, profileRepo, postRepo] = entities.map(entity => connection.getRepository(entity));
+  const [userRepo, commentRepo, likeRepo, profileRepo, postRepo, followerRepo, messageRepo, conversationRepo] = entities.map(entity => connection.getRepository(entity));
 
   return {
     userRepo,
     commentRepo,
     likeRepo,
     profileRepo,
-    postRepo
+    postRepo,
+    followerRepo,
+    messageRepo,
+    conversationRepo
   };
 }
 

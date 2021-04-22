@@ -7,7 +7,7 @@ import { CommentRepository } from "../repositories/commentRepo";
 import { LikeRepository } from "../repositories/likeRepo";
 import { EntityManager } from "typeorm";
 import { Comment } from "../../domain/entities/Comment";
-import { USER_NOT_FOUND } from "../../controllers/graphql/errors";
+import { USER_NOT_FOUND } from "../../controllers/graphql/constants/errors";
 
 interface Deps {
   userRepo: UserRepository;

@@ -8,6 +8,7 @@ import { Profile } from "../../domain/entities/Profile";
 
 import { UserRepository } from "../repositories/userRepo";
 import { ProfileRepository } from "../repositories/profileRepo";
+import { ALREADY_LOGGED_IN, DUPLICATE_EMAIL, DUPLICATE_USERNAME } from "../../controllers/graphql/constants/errors";
 
 const invalidCredentialsError = () => {
   throw new UserInputError('invalid_credentials');
@@ -20,13 +21,13 @@ interface Args {
 
 interface LoginInput {
   email: string;
-  name?: string;
+  username?: string;
   password: string;
 }
 
 interface SignupInput extends LoginInput {
   birthday: string;
-  name: string;
+  username: string;
   imageUrl?: string;
   bio?: string;
 }
@@ -40,7 +41,7 @@ export class AuthService {
     this.profileRepo = profileRepo;
   }
 
-  async login({ email, password }: LoginInput): Promise<Profile> {
+  async login({ email, password }: LoginInput): Promise<User> {
     if (!validateEmail(email)) {
       return invalidCredentialsError();
     }
@@ -51,21 +52,29 @@ export class AuthService {
       return invalidCredentialsError();
     }
 
-    return profile;
+    profile.user.profile = profile;
+
+    return profile.user;
   }
 
-  async signup({ email, password, name, imageUrl, birthday }: SignupInput): Promise<Profile> {
-    if (await this.profileRepo.findOne({ where: { email } })) {
-      throw new UserInputError('duplicate_email');
+  async signup({ email, password, username, imageUrl, birthday }: SignupInput): Promise<User> {
+    const p = await this.profileRepo.findOne({ where: [{ email }, { username }] });
+
+    if (!!p) {
+      const error = username === p.username ? DUPLICATE_USERNAME : DUPLICATE_EMAIL;
+      throw new UserInputError(error, { message: error });
     }
-    const profile = Profile.create({ email, password, name, imageUrl, birthday });
+
+    const profile = Profile.create({ email, password, username, imageUrl, birthday });
 
     await this.profileRepo.save(profile);
 
     const newUser = User.create({ profile });
 
+    newUser.profile = profile;
+
     await this.userRepo.save(newUser);
 
-    return profile;
+    return newUser;
   }
 }

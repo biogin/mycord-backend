@@ -6,10 +6,16 @@ export const typeDefs = gql`
         Post
     }
     
+    enum FollowingState {
+        FOLLOW,
+        NOFOLLOW
+    }
+    
     type User {
         id: ID
         
-        profile: Profile!
+        joinedAt: String
+        profile: Profile
         posts: [Post]
         comments: [Comment]
 #        followedUsers: [User]
@@ -26,6 +32,8 @@ export const typeDefs = gql`
         user: User
         likes: [Like]
         comments: [Comment]
+        
+        profileImageUrl: String
     }
     
     type Comment {
@@ -50,30 +58,72 @@ export const typeDefs = gql`
     type Profile {
         id: ID
         
-        email: String!
-        password: String!
-        birthday: String!
-        name: String
+        email: String
+        password: String
+        birthday: String
+        username: String
+        firstName: String
+        lastName: String
         imageUrl: String
         user: User
     }
+    
+    enum ConversationStatus {
+        NewMessage,
+        Default,
+        Deleted
+    }
+    
+    type Conversation {
+        id: ID
+        
+        messages: [Message]
+        status: String
+        receivingUser: User
+    }
+    
+    type UserInfo {
+        user: User!
+        isFollowing: Boolean
+        me: Boolean
+    }
+    
+    type Message {
+        authorProfile: Profile
+        text: String
+    }
+    
+    type Subscription {
+        messageSent(subscriptionId: ID): Message
+    }
 
     type Query {
-        user(id: ID): User!,
+        user(username: String!): UserInfo!,
         post(id: ID): Post!,
         posts(userId: ID): [Post!]
-        loggedIn: Boolean
+        
+        recentPosts: [Post!]
+        conversations(conversationIds: [ID]): [Conversation!]
+        conversation(id: ID): Conversation
+        loggedInUser: Profile
+        userExists(username: String!): Boolean
     }
     
     type Mutation {
-        signup(name: String, password: String, email: String, birthday: String): Profile
+        signup(username: String, password: String, email: String, birthday: String): Profile
         login(email: String, password: String): Profile
         signout: Profile
         
-        createPost(description: String, title: String, audioUrl: String, userId: ID!): Post!
+        sendEmailVerification(email: String!): String
+        
+        createPost(description: String!, title: String!, audioUrl: String!, userId: ID!): Post
         
         likeEntity(entityId: ID!, likedEntityType: LikedEntityType!, userId: ID!): Like
         
         leaveComment(postId: ID!, userId: ID!, commentText: String!): Comment!
+        
+        sendMessage(receiverId: ID!, text: String!): Message
+        
+        follow(username: String): Int
     }
 `;
