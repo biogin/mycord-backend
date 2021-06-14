@@ -18,6 +18,9 @@ export class Like {
     enum: LikedEntityType
   }) likedEntityType: LikedEntityType;
 
+  @Column('boolean')
+  active: boolean;
+
   @ManyToOne(type => Post, post => post.likes, { nullable: true })
   post: Post;
 
@@ -35,6 +38,7 @@ export class Like {
     like.comment = comment;
     like.post = post;
     like.likedEntityType = likedEntityType;
+    like.active = true;
 
     return like;
   }

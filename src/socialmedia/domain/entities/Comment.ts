@@ -1,14 +1,17 @@
-import {BaseEntity, Column, Entity, JoinColumn, ManyToOne, OneToMany, OneToOne, PrimaryGeneratedColumn} from "typeorm";
-import {User} from "./User";
-import {Like} from "./Like";
-import {Post} from "./Post";
+import { Column, CreateDateColumn, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { User } from "./User";
+import { Like } from "./Like";
+import { Post } from "./Post";
 
 @Entity()
 export class Comment {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column('varchar', {length: 1000, default: ''})
+  @Column('bigint')
+  activityId: number;
+
+  @Column('varchar', { length: 1000, default: '' })
   text;
 
   @ManyToOne(() => User)
@@ -20,7 +23,10 @@ export class Comment {
   @OneToMany(() => Like, like => like.comment)
   likes: Array<Like>;
 
-  static create({ text, post, user }: Partial< { [T in keyof Comment] } >): Comment {
+  @CreateDateColumn()
+  createdAt: Date;
+
+  static create({ text, post, user }: Partial<{ [T in keyof Comment] }>): Comment {
     const comment = new Comment();
 
     comment.user = user;

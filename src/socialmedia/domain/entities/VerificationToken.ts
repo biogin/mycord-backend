@@ -9,9 +9,6 @@ import {
   BeforeUpdate
 } from "typeorm";
 
-import { Post } from "./Post";
-import { Profile } from "./Profile";
-import { Comment } from "./Comment";
 import { User } from "./User";
 
 @Entity()

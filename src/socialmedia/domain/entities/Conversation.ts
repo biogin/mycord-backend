@@ -1,10 +1,11 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, JoinColumn, OneToMany, OneToOne, PrimaryGeneratedColumn } from "typeorm";
 import { Message } from "./Message";
+import { ConversationActivity } from "./ConversationActivity";
 
-enum ConversationStatus {
-  NewMessage = 'new-message',
-  Default = 'default',
-  Deleted = 'deleted'
+export enum ConversationStatus {
+  NewMessage = 'New-message',
+  Default = 'Default',
+  Deleted = 'Deleted'
 }
 
 @Entity()
@@ -18,9 +19,16 @@ export class Conversation {
   @OneToMany(() => Message, message => message.conversation)
   messages: Array<Message>;
 
+  @OneToOne(() => ConversationActivity, activity => activity.conversation)
+  @JoinColumn()
+  activity: ConversationActivity;
+
+  @CreateDateColumn()
+  createdAt: Date;
+
   @Column({
     type: 'enum',
     enum: ConversationStatus,
-    default: ConversationStatus.Default
+    default: ConversationStatus.Default,
   }) status: ConversationStatus;
 }

@@ -4,7 +4,7 @@ import http from 'http';
 import { Database } from "./infra/postgres";
 import { App } from "./app";
 import { typeDefs } from "./socialmedia/controllers/graphql";
-import { AuthenticationError } from "apollo-server-express";
+import { AuthenticationError, makeExecutableSchema } from "apollo-server-express";
 
 require('dotenv').config({
   path: __dirname + '/.env'
@@ -25,9 +25,13 @@ const corsOptions = {
 
     const app = new App({ database });
 
-    const server = new ApolloServer({
-      typeDefs,
+    const schema = makeExecutableSchema({
       resolvers: app.resolvers,
+      typeDefs
+    });
+
+    const server = new ApolloServer({
+      schema,
       playground: process.env.NODE_ENV === 'production' ? false : { settings: { 'request.credentials': 'include' } },
       subscriptions: {
         path: '/subscriptions',

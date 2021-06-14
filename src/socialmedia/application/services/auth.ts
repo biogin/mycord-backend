@@ -8,7 +8,7 @@ import { Profile } from "../../domain/entities/Profile";
 
 import { UserRepository } from "../repositories/userRepo";
 import { ProfileRepository } from "../repositories/profileRepo";
-import { ALREADY_LOGGED_IN, DUPLICATE_EMAIL, DUPLICATE_USERNAME } from "../../controllers/graphql/constants/errors";
+import { DUPLICATE_EMAIL, DUPLICATE_USERNAME } from "../../controllers/graphql/constants/errors";
 
 const invalidCredentialsError = () => {
   throw new UserInputError('invalid_credentials');
@@ -46,7 +46,7 @@ export class AuthService {
       return invalidCredentialsError();
     }
 
-    const profile = await this.profileRepo.findOne({ where: { email }, relations: ['user'] });
+    const profile = await this.profileRepo.findOneByEmail(email);
 
     if (!profile || !(await argon2.verify(profile.password, password))) {
       return invalidCredentialsError();
@@ -58,7 +58,7 @@ export class AuthService {
   }
 
   async signup({ email, password, username, imageUrl, birthday }: SignupInput): Promise<User> {
-    const p = await this.profileRepo.findOne({ where: [{ email }, { username }] });
+    const p = await this.profileRepo.findOneByEmailOrUsername(email, username);
 
     if (!!p) {
       const error = username === p.username ? DUPLICATE_USERNAME : DUPLICATE_EMAIL;

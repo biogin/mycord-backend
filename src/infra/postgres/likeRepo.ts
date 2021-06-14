@@ -1,7 +1,26 @@
-import { Connection } from "typeorm";
+import { EntityManager, EntityRepository, UpdateResult } from "typeorm";
 import { Like } from "../../socialmedia/domain/entities/Like";
-import { LikeRepository } from "../../socialmedia/application/repositories/likeRepo";
+import { LikeRepository as ILikeRepo } from "../../socialmedia/application/repositories/likeRepo";
+import { Nullable } from "../../@types/ts";
 
-export function getLikeRepo(connection: Connection): LikeRepository {
-  return connection.getRepository(Like);
+@EntityRepository(Like)
+export class LikeRepository implements ILikeRepo {
+  constructor(private manager: EntityManager) {
+  }
+
+  findByUserAndCommentId(commentId: number, userId: number): Promise<Nullable<Like>> {
+    return this.manager.findOne(Like, { where: { user: { id: userId }, comment: { id: commentId } } });
+  }
+
+  findByUserAndPostId(postId: number, userId: number): Promise<Nullable<Like>> {
+    return this.manager.findOne(Like, { where: { user: { id: userId }, post: { id: postId } } });
+  }
+
+  update(id: number, toUpdate: Partial<Like>): Promise<UpdateResult> {
+    return this.manager.update(Like, { id }, toUpdate);
+  }
+
+  async save(entity: Like): Promise<Like> {
+    return await this.manager.save(entity);
+  }
 }

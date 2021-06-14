@@ -12,6 +12,9 @@ import { getApplicationUseCases } from "./socialmedia/application/usecases";
 import { Database } from "./infra/postgres";
 import { AuthService } from "./socialmedia/application/services/auth";
 import { getResolvers } from "./socialmedia/controllers/graphql/resolvers";
+import { IResolvers } from "apollo-server-express";
+import { PostService } from "./socialmedia/application/services/post";
+import { ConversationService } from "./socialmedia/application/services/conversation";
 
 interface Args {
   database: Database;
@@ -20,7 +23,7 @@ interface Args {
 export class App {
   private db: Database;
 
-  readonly resolvers: object;
+  readonly resolvers: IResolvers;
   readonly session: any;
   readonly expressApp: Express;
 
@@ -37,6 +40,8 @@ export class App {
       followerRepo,
       messageRepo,
       conversationRepo,
+      activityRepo,
+      conversationActivityRepo
     } = this.db.repos;
 
     const useCases = getApplicationUseCases({
@@ -48,14 +53,21 @@ export class App {
       messageRepo,
       conversationRepo,
       followerRepo,
+      activityRepo,
+      conversationActivityRepo,
       getTransactionManager: getManager
     });
 
     const authService = new AuthService({ userRepo, profileRepo });
+    const postService = new PostService(({ postRepo, followerRepo }));
+    const conversationService = new ConversationService({ conversationRepo, userRepo, conversationActivityRepo });
 
     this.resolvers = getResolvers({
-      userRepo,
       authService,
+      postService,
+      conversationService,
+
+      userRepo,
       postRepo,
       followerRepo,
       profileRepo,
@@ -63,7 +75,9 @@ export class App {
       useCases,
       conversationRepo,
       messageRepo,
-      getManager
+      conversationActivityRepo,
+
+      getManager,
     });
 
     this.session = expressSession({

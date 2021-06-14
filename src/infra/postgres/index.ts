@@ -1,13 +1,15 @@
-import { Connection, createConnection, getConnection, Repository } from "typeorm";
+import { Connection, createConnection, getConnection, getCustomRepository } from "typeorm";
 
-import { Post } from "../../socialmedia/domain/entities/Post";
-import { User } from "../../socialmedia/domain/entities/User";
-import { Comment } from "../../socialmedia/domain/entities/Comment";
-import { Like } from "../../socialmedia/domain/entities/Like";
-import { Profile } from "../../socialmedia/domain/entities/Profile";
-import { Follower } from "../../socialmedia/domain/entities/Follower";
-import { Message } from "../../socialmedia/domain/entities/Message";
-import { Conversation } from "../../socialmedia/domain/entities/Conversation";
+import { UserRepository } from "./userRepo";
+import { CommentRepository } from "./commentRepo";
+import { LikeRepository } from "./likeRepo";
+import { ProfileRepository } from "./profileRepo";
+import { PostRepository } from "./postRepo";
+import { FollowerRepository } from "./followerRepo";
+import { MessageRepository } from "./messageRepo";
+import { ConversationRepository } from "./conversationRepo";
+import { ActivityRepository } from "./activityRepo";
+import { ConversationActivityRepository } from "./conversationActivity";
 
 async function getOrCreateConnection() {
   try {
@@ -17,14 +19,21 @@ async function getOrCreateConnection() {
   }
 }
 
-type Entity = User | Post | Comment | Like | Profile;
+const customRepositories = [
+  UserRepository,
+  CommentRepository,
+  LikeRepository,
+  ProfileRepository,
+  PostRepository,
+  FollowerRepository,
+  MessageRepository,
+  ConversationRepository,
+  ActivityRepository,
+  ConversationActivityRepository
+];
 
-const entities = [User, Comment, Like, Profile, Post, Follower, Message, Conversation];
-
-function getRepositories(connection: Connection): { [key: string]: Repository<any> } {
-  const [userRepo, commentRepo, likeRepo, profileRepo, postRepo, followerRepo, messageRepo, conversationRepo] = entities.map(entity => connection.getRepository(entity));
-
-  return {
+function getRepositories() {
+  const [
     userRepo,
     commentRepo,
     likeRepo,
@@ -32,12 +41,27 @@ function getRepositories(connection: Connection): { [key: string]: Repository<an
     postRepo,
     followerRepo,
     messageRepo,
-    conversationRepo
+    conversationRepo,
+    activityRepo,
+    conversationActivityRepo
+  ] = customRepositories.map(repo => getCustomRepository(repo) as unknown);
+
+  return {
+    userRepo: userRepo as UserRepository,
+    commentRepo: commentRepo as CommentRepository,
+    likeRepo: likeRepo as LikeRepository,
+    profileRepo: profileRepo as ProfileRepository,
+    postRepo: postRepo as PostRepository,
+    followerRepo: followerRepo as FollowerRepository,
+    messageRepo: messageRepo as MessageRepository,
+    conversationRepo: conversationRepo as ConversationRepository,
+    activityRepo: activityRepo as ActivityRepository,
+    conversationActivityRepo: conversationActivityRepo as ConversationActivityRepository
   };
 }
 
 export class Database {
-  private repositories: { [key: string]: Repository<any> };
+  private repositories: ReturnType<typeof getRepositories>;
   private connection: Connection;
 
   async init(): Promise<void> {
@@ -49,10 +73,10 @@ export class Database {
 
     await this.connection.runMigrations();
 
-    this.repositories = Object.freeze(getRepositories(this.connection));
+    this.repositories = Object.freeze(getRepositories());
   }
 
-  get repos(): { [key: string]: Repository<any> } {
+  get repos(): ReturnType<typeof getRepositories> {
     if (!this.repositories) {
       throw new Error('Database uninitialized');
     }

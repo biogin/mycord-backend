@@ -1,12 +1,12 @@
 import { EntityManager } from "typeorm";
 import { UserInputError } from "apollo-server-express";
 
-import { UseCase } from "./index";
 import { UserRepository } from "../repositories/userRepo";
 import { USER_NOT_FOUND } from "../../controllers/graphql/constants/errors";
 import { Follower } from "../../domain/entities/Follower";
 import { ProfileRepository } from "../repositories/profileRepo";
 import { FollowerRepository } from "../repositories/followerRepo";
+import { UseCase } from "../interfaces/useCase";
 
 interface Deps {
   userRepo: UserRepository;
@@ -36,7 +36,7 @@ export class FollowUserUseCase implements UseCase<FollowUserRequestDTO, Promise<
   }
 
   async execute({ username, followerId }: FollowUserRequestDTO): Promise<number> {
-    const followedUser = await this.profileRepo.findOne({ where: { username }, relations: ['user'] });
+    const followedUser = await this.profileRepo.findOneByUsername(username, ['user']);
 
     if (!followedUser) {
       throw new UserInputError(USER_NOT_FOUND, { message: `User with such username doesn't exist` });
@@ -46,24 +46,24 @@ export class FollowUserUseCase implements UseCase<FollowUserRequestDTO, Promise<
 
     const query = { followedId: userId, followerId };
 
-    if (!(await this.followerRepo.findOne({ where: query }))) {
+    if (!(await this.followerRepo.followerExists(query.followedId, query.followerId))) {
       const follower = Follower.create(query);
 
       await this.followerRepo.save(follower);
 
       await Promise.all([
-        this.userRepo.increment({ id: userId }, 'followersCount', 1),
-        this.userRepo.increment({ id: followerId }, 'followingCount', 1)
+        this.userRepo.incrementCount(userId, 'followersCount'),
+        this.userRepo.incrementCount(followerId, 'followingCount')
       ]);
     } else {
-      const { affected } = await this.followerRepo.delete(query);
+      const { affected } = await this.followerRepo.deleteFollowingRelation(followerId, userId);
 
       await Promise.all([
-        this.userRepo.decrement({ id: userId }, 'followersCount', 1),
-        this.userRepo.decrement({ id: followerId }, 'followingCount', 1)
+        this.userRepo.decrementCount(userId, 'followersCount'),
+        this.userRepo.decrementCount(followerId, 'followingCount')
       ]);
     }
 
-    return this.followerRepo.count({ where: { followedId: userId } });
+    return this.followerRepo.count(userId);
   }
 }

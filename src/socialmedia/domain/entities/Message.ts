@@ -2,6 +2,11 @@ import { Entity, PrimaryGeneratedColumn, Column, BeforeInsert, ManyToOne } from 
 
 import { Conversation } from "./Conversation";
 
+export enum MessageStatus {
+  Read = 'read',
+  Unread = 'unread'
+}
+
 const MAX_MESSAGE_LENGTH = 10000;
 
 @Entity()
@@ -17,6 +22,12 @@ export class Message {
   @Column('integer')
   receiverId: number;
 
+  @Column({
+    type: 'enum',
+    enum: MessageStatus,
+    default: MessageStatus.Read
+  }) status: MessageStatus;
+
   @ManyToOne(() => Conversation)
   conversation: Conversation;
 
@@ -29,13 +40,14 @@ export class Message {
     this.createdAt = Date.now().toString();
   }
 
-  static create({ text, receiverId, senderId, conversation }: Partial<{ [K in keyof Message] }>): Message {
+  static create({ text, receiverId, senderId, conversation, status }: Partial<{ [K in keyof Message] }>): Message {
     const message = new Message();
 
     message.text = text;
     message.senderId = senderId;
     message.receiverId = receiverId;
     message.conversation = conversation;
+    message.status = status;
 
     return message;
   }

@@ -1,4 +1,4 @@
-import { EntityManager, In } from "typeorm";
+import { EntityManager } from "typeorm";
 import { PubSub } from 'apollo-server';
 import { AuthenticationError, UserInputError } from 'apollo-server-express';
 import nodemailer from 'nodemailer';
@@ -9,18 +9,41 @@ import { PostRepository } from "../../../application/repositories/postRepo";
 import { AuthService } from "../../../application/services/auth";
 import { CommentRepository } from "../../../application/repositories/commentRepo";
 import { ProfileRepository } from "../../../application/repositories/profileRepo";
-import { UseCase } from "../../../application/usecases";
 
 import { ALREADY_LOGGED_IN, INVALID_SESSION_DATA, NOT_AUTHENTICATED, USER_NOT_FOUND } from "../constants/errors";
 
-import { Post } from "../../../domain/entities/Post";
 import { Profile } from "../../../domain/entities/Profile";
 import { User } from "../../../domain/entities/User";
-import { MESSAGE_SENT } from "../constants/events";
+import { MESSAGE_SENT, USER_TYPING } from "../constants/events";
 import { ConversationRepository } from "../../../application/repositories/conversationRepo";
-import { MessageRepository } from "../../../application/repositories/messageRepository";
+import { PostService } from "../../../application/services/post";
+import { ConversationActivityRepository } from "../../../application/repositories/conversationActivityRepo";
+import { ConversationService } from "../../../application/services/conversation";
+import { ApplicationUseCases } from "../../../application/usecases";
+import { MessageRepository } from "../../../application/repositories/messageRepo";
+import { Nullable } from "../../../../@types/ts";
 
-interface Args {
+const posts = new Array(25).fill(0).map(() => ({
+  id: 1,
+  title: 'Super title',
+  audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
+  // createdAt: new Date(),
+  profile: {
+    username: 'Igor',
+    imageUrl: 'https://widgetwhats.com/app/uploads/2019/11/free-profile-photo-whatsapp-4.png'
+  },
+  comments: [
+    {
+      text: 'Looks good!',
+      profile: {
+        username: 'Igor duplicate',
+        imageUrl: 'https://widgetwhats.com/app/uploads/2019/11/free-profile-photo-whatsapp-4.png'
+      }
+    }
+  ]
+}));
+
+interface Deps {
   userRepo: UserRepository;
   postRepo: PostRepository;
   commentRepo: CommentRepository;
@@ -28,53 +51,57 @@ interface Args {
   followerRepo: FollowerRepository;
   conversationRepo: ConversationRepository;
   messageRepo: MessageRepository;
+  conversationActivityRepo: ConversationActivityRepository;
 
   authService: AuthService;
+  postService: PostService;
+  conversationService: ConversationService;
 
   getManager(): EntityManager;
 
-  useCases: { [name: string]: UseCase<any, any> };
+  useCases: ApplicationUseCases;
+}
+
+function ensureIsLoggedIn(session: any) {
+  if (!session.isLoggedIn || !session.user._id) {
+    session.destroy();
+
+    throw new AuthenticationError(NOT_AUTHENTICATED);
+  }
 }
 
 export function getResolvers({
-                               userRepo,
                                authService,
+                               conversationService,
+                               postService,
+
+                               useCases,
+
+                               userRepo,
                                postRepo,
                                profileRepo,
-                               commentRepo,
-                               useCases,
-                               getManager,
                                followerRepo,
                                conversationRepo,
-                               messageRepo
-                             }: Args) {
+                               conversationActivityRepo
+                             }: Deps) {
   const pubsub = new PubSub();
 
   return {
     Query: {
       async user(_, { username }, { session }): Promise<{ user: User; me: boolean; isFollowing: boolean }> {
-        const profile = await profileRepo.findOne({ where: { username }, relations: ['user'] });
+        const profile = await profileRepo.findOneByUsername(username, ['user']);
 
         if (!profile) {
           throw new UserInputError(USER_NOT_FOUND);
         }
 
-        profile.user.posts = await postRepo.find({
-          take: 100,
-          where: { user: { id: profile.user.id } },
-          relations: ['user']
-        });
+        profile.user.posts = await postRepo.findUserPosts(profile.user.id);
 
         profile.user.profile = profile;
 
-        const me = session.username === username;
+        const me = session.user.name === username;
 
-        const isFollowingRequestedUser = session.isLoggedIn && !!(await followerRepo.findOne({
-          where: {
-            followedId: profile.user.id,
-            followerId: session._userid
-          }
-        }));
+        const isFollowingRequestedUser = session.isLoggedIn && await followerRepo.followerExists(profile.user.id, session._userid);
 
         return {
           user: profile.user,
@@ -83,137 +110,62 @@ export function getResolvers({
         };
       },
       async userExists(_, { username }) {
-        return !!(await profileRepo.findOne({ where: { username }, relations: ['user'] }));
+        return !!(await profileRepo.findOneByUsername(username));
       },
       async recentPosts(_, {}, { session }) {
-        if (!session.isLoggedIn) {
-          throw new AuthenticationError(NOT_AUTHENTICATED);
-        }
+        ensureIsLoggedIn(session);
 
-        const postUserIds = (await followerRepo.find({ where: { followerId: session._userid } })).map(_ => _.followedId);
+        const posts = await postService.getRecentPosts(session.user._id);
 
-        return await postRepo.find(
-            {
-              order: { createdAt: 'ASC' },
-              where: { 'user.id': In(postUserIds) },
-              take: 100,
-              relations: ['user']
-            });
+        return posts;
       },
       post: async (_, { id }, { session }) => {
-        if (!session.isLoggedIn) {
-          throw new AuthenticationError(NOT_AUTHENTICATED);
-        }
+        ensureIsLoggedIn(session);
 
-        return postRepo.findOne(id);
+        return postRepo.findOnyById(id);
       },
       async posts(_, { userId }, { session }) {
-        if (!session.isLoggedIn) {
-          throw new AuthenticationError(NOT_AUTHENTICATED);
-        }
+        ensureIsLoggedIn(session);
 
-        if (!session._userid) {
+        if (!session.user._id) {
           throw new AuthenticationError(INVALID_SESSION_DATA);
         }
 
-        return postRepo.find({ relations: ['user'], where: { user: { id: session._userid } } });
+        return postRepo.findUserPosts(session.user._id);
       },
-      async loggedInUser(_, {}, { session, req }): Promise<Profile> {
-        if (!session.isLoggedIn || !session.email) {
-          return null;
-        }
-
-        const profile = await profileRepo.findOne({ relations: ['user'], where: { email: session.email } });
-
-        return profile || null;
+      async loggedInUser(_, {}, { session }): Promise<Nullable<Profile>> {
+        return await profileRepo.findOneByEmail(session.user.email);
       },
       async conversations(_, { conversationIds }, { session }) {
-        if (!session.isLoggedIn || !session._userid) {
-          return null;
-        }
+        ensureIsLoggedIn(session);
 
-        const conversations = await conversationRepo.find({
-          where: [{ userOne: session._userid }, { userTwo: session._userid }],
-          relations: ['messages']
-        });
-
-        const receiversUserIds = conversations.map(({
-                                                      userOne,
-                                                      userTwo
-                                                    }) => session._userid === userOne ? userTwo : userOne);
-
-        const receiversProfiles = await userRepo.find({ where: { id: In(receiversUserIds) }, relations: ['profile'] });
-
-        const receiversMap = new Map(receiversProfiles.map(_ => [_.id, _]));
-
-        return Promise.all(conversations.map(async conversation => {
-              conversation.messages.sort((a, b) => {
-                const aCreatedAt = new Date(+a.createdAt)
-                const bCreatedAt = new Date(+b.createdAt);
-
-                if (aCreatedAt < bCreatedAt) {
-                  return 1;
-                }
-
-                if (aCreatedAt > bCreatedAt) {
-                  return -1;
-                }
-
-                return 0;
-              });
-
-              const user = (receiversMap.get(conversation.userOne) || receiversMap.get(conversation.userTwo));
-
-              const [lastMessage] = conversation.messages.slice(0, 1);
-
-              const profile = (await userRepo.findOne({ where: { id: lastMessage.senderId }, relations: ['profile'] }))?.profile;
-
-              return {
-                status: conversation.status,
-                receivingUser: user,
-                id: conversation.id,
-                messages: [{
-                  text: lastMessage.text,
-                  authorProfile: profile
-                }]
-              }
-            })
-        );
+        return conversationService.getConversations({ userId: session.user._id });
       },
       async conversation(_, { id }, { session }) {
-        if (!session.isLoggedIn || !session._userid) {
-          return null;
-        }
+        ensureIsLoggedIn(session);
 
-        const conversation = await conversationRepo.findOne({
-          where: { id },
-          relations: ['messages']
-        });
+        return conversationService.getConversation(id);
+      },
+      async conversationByUsersIds(_, { userOne, userTwo }, { session }) {
+        ensureIsLoggedIn(session);
 
-        const messages = await Promise.all(conversation.messages.map(async message => {
-          const user = await userRepo.findOne({ where: { id: message.senderId }, relations: ['profile'] });
-
-          return {
-            authorProfile: user.profile,
-            text: message.text
-          }
-        }));
-
-        return {
-          id: conversation.id,
-          messages,
-          status: conversation.status
-        }
-      }
+        return await conversationRepo.findByUserIds(userOne, userTwo);
+      },
     },
-
     Subscription: {
       messageSent: {
         subscribe: () => pubsub.asyncIterator([MESSAGE_SENT])
+      },
+      userTyping: {
+        subscribe: () => pubsub.asyncIterator([USER_TYPING])
       }
     },
-
     Mutation: {
+      async setConversationStatus(_, { id, status }, { session }) {
+        ensureIsLoggedIn(session);
+
+        return conversationService.setConversationStatus(id, status);
+      },
       signup: async (_, { username, password, email, imageUrl, birthday }, { session }) => {
         if (session.isLoggedIn) {
           // should not happen but... shit happens
@@ -225,9 +177,12 @@ export function getResolvers({
         const user = await authService.signup({ username, password, email, imageUrl, birthday });
 
         session.isLoggedIn = true;
-        session.username = username;
-        session._userid = user.id;
-        session.email = email;
+        session.user = {
+          _id: user.id,
+          name: username,
+          image: user.profile.imageUrl,
+          email
+        };
 
         return user;
       },
@@ -242,91 +197,87 @@ export function getResolvers({
         const user = await authService.login({ email, password });
 
         session.isLoggedIn = true;
-        session.username = user.profile.username;
-        session._userid = user.id;
-        session.email = email;
+        session.user = {
+          _id: user.id,
+          name: user.profile.username,
+          image: user.profile.imageUrl,
+          email
+        };
 
         return user;
       },
       signout(_, {}, { session }): Promise<Profile> {
         if (session.isLoggedIn) {
-          const email = session.email;
+          const email = session.user.email;
           session.destroy();
 
           session = null;
 
-          return profileRepo.findOne({ where: { email } });
+          return profileRepo.findOneByEmail(email);
         }
+
+        return null
       },
 
-      async sendMessage(_, { receiverId, text }, { session }): Promise<{ text: string; authorProfile: Profile }> {
-        if (!session.isLoggedIn) {
-          throw new AuthenticationError(NOT_AUTHENTICATED);
-        }
+      async sendMessage(_, {
+        receiverId,
+        text,
+        currentConversationId,
+        markAsRead
+      }, { session }): Promise<number> {
+        ensureIsLoggedIn(session);
 
-        const authorProfile = await useCases.sendMessageUseCase.execute({
+        const { unreadMessagesCount, profile } = await useCases.sendMessageUseCase.execute({
           receiverId,
-          senderId: session._userid,
-          text
+          senderId: session.user._id,
+          text,
+          markAsRead
         });
 
         pubsub.publish(MESSAGE_SENT, {
           messageSent: {
             text,
-            authorProfile
+            authorProfile: profile,
+            currentConversationId
           }
         });
 
-        return {
-          authorProfile,
-          text
-        };
+        return unreadMessagesCount;
       },
       async sendEmailVerification(_, { email }, { session }): Promise<void> {
-        if (!session.isLoggedIn) {
-          throw new AuthenticationError(NOT_AUTHENTICATED);
-        }
+        ensureIsLoggedIn(session);
 
         let transporter = nodemailer.createTransport()
 
       },
-      async createPost(_, { title, description, audioUrl, userId }, { session }) {
-        if (!session.isLoggedIn) {
-          throw new AuthenticationError(NOT_AUTHENTICATED);
+      async createPost(_, { title, audioUrl }, { session }) {
+        ensureIsLoggedIn(session);
+
+        try {
+          return await useCases.createPostUseCase.execute({ title, audioUrl, authorId: session.user._id });
+        } catch (e) {
+          console.error('Error createPost', e);
+
+          return null;
         }
-
-        const user = await userRepo.findOne(userId, { relations: ['posts'] });
-
-        if (!user) {
-          throw new UserInputError(USER_NOT_FOUND);
-        }
-
-        const post = Post.create({ title, description, audioUrl, user });
-
-        await postRepo.save(post);
-
-        return post;
       },
       async likeEntity(_, { entityId, userId, likedEntityType }, { session }) {
-        if (!session.isLoggedIn) {
-          throw new AuthenticationError(NOT_AUTHENTICATED);
-        }
+        ensureIsLoggedIn(session);
 
         try {
           return await useCases.likeEntityUseCase.execute({ entityId, userId, likedEntityType });
         } catch (e) {
+          // TODO do not rethrow
           console.error(e);
 
           throw e;
         }
       },
       async leaveComment(_, { postId, userId, comment }, { session }) {
-        if (!session.isLoggedIn) {
-          throw new AuthenticationError(NOT_AUTHENTICATED);
-        }
+        ensureIsLoggedIn(session);
 
         try {
-          return await useCases.leaveCommentUseCase.execute({ postId, userId, comment });
+          return await useCases.leaveCommentUseCase.execute({ postId, userId, text: comment });
         } catch (e) {
           console.error(e);
 
@@ -334,18 +285,25 @@ export function getResolvers({
         }
       },
       async follow(_, { username }, { session }) {
-        if (!session.isLoggedIn || !session._userid) {
-          throw new AuthenticationError(NOT_AUTHENTICATED);
-        }
+        ensureIsLoggedIn(session);
 
         try {
-          return await useCases.followUserUseCase.execute({ username, followerId: session._userid });
+          return await useCases.followUserUseCase.execute({ username, followerId: session.user._id });
         } catch (e) {
           console.error(e);
 
           throw e;
         }
+      },
+      async editProfile(_, { imageUrl }, { session }) {
+        ensureIsLoggedIn(session);
+
+        const { affected } = await profileRepo.updateProfile(session.user.name, { imageUrl });
+
+        session.user.image = imageUrl;
+
+        return affected > 0;
       }
-    }
+    },
   };
 }
